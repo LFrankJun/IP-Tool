@@ -235,7 +235,7 @@ def checkQLYQ(Content,wordLen,formatftbjList):
             del indexList[deleteIndex]
             del paraNumList[deleteIndex]
 
-        paracodeList= [re.sub(r"\.|\．|\、","",element) for element in paraNumList]
+        paracodeList= [re.sub(r"\.|\．|\、| ","",element) for element in paraNumList]
         ################## 
 
         numList1 = []        # 存放对应段落中的引用(引用关系只考虑每个段落中“其特征在于”关键字或者第一个逗号之前的字符串)
@@ -398,7 +398,7 @@ def checkQLYQ(Content,wordLen,formatftbjList):
             del indexList1[deleteIndex]
             del paraNumList[deleteIndex]
 
-        paracodeList= [re.sub(r"\.|\．|\、","",element) for element in paraNumList]
+        paracodeList= [re.sub(r"\.|\．|\、| ","",element) for element in paraNumList]
         ##################
 
         indexList2 = []   # 每段第一个逗号所在的index
@@ -482,7 +482,7 @@ def checkQLYQ(Content,wordLen,formatftbjList):
             del indexList[deleteIndex]
             del paraNumList[deleteIndex]
 
-        paracodeList= [re.sub(r"\.|\．|\、","",element) for element in paraNumList]
+        paracodeList= [re.sub(r"\.|\．|\、| ","",element) for element in paraNumList]
 
         return stringValue, indexList, paracodeList
     

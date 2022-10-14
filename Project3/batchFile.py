@@ -24,6 +24,7 @@ import ctypes
 
 
 
+
 pdfmetrics.registerFont(TTFont('SimSun', './SimSun.ttf'))  # 注册字体
 logging.getLogger().setLevel(logging.INFO)
 
@@ -314,17 +315,19 @@ def main_bF():
                 sections = wordhandle.ActiveDocument.Sections  # 所有页眉
                 for i in range(len(sections)):
                     name = wordhandle.ActiveDocument.Sections[i].Headers[0]
-                    spName = str(name).split()
-                    headNameList.append(spName)
+                    logging.info("name: %s",str(name))
+                    spName = ''.join([char for char in str(name) if u'\u4e00' <= char <= u'\u9fa5'])  # 提取段落中的页眉
+                    if spName != "":
+                        headNameList.append(spName)
                 print("所有的页眉:%s",headNameList)
 
                 qlyqsIndex = []
                 smsIndex = []
                 for i in range(len(headNameList)):
-                    for element in headNameList[i]:
-                        if "权利要求书" == str(element):
+                        string = headNameList[i]
+                        if "权利要求书" == str(string):
                             qlyqsIndex.append(i)
-                        if "说明书" == str(element):
+                        if "说明书" == str(string):
                             smsIndex.append(i)
                 logging.info("qlyqsIndex:%s",qlyqsIndex)
                 logging.info("smsIndex:%s",smsIndex)

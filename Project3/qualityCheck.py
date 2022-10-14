@@ -208,6 +208,7 @@ def main_qc():
                     headNameList.append(spName)
             print("所有的页眉:%s",headNameList)
 
+
             smszyIndex = [] 
             qlyqsIndex = []
             smsIndex = []
@@ -426,7 +427,7 @@ def main_qc():
             del indexList[deleteIndex]
             del paraNumList[deleteIndex]
 
-        paracodeList= [re.sub(r"\.|\．|\、","",element) for element in paraNumList]
+        paracodeList= [re.sub(r"\.|\．|\、| ","",element) for element in paraNumList]
         ##################
         
 
