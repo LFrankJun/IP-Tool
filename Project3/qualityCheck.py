@@ -152,13 +152,13 @@ def main_qc():
         else:
             isFlag11 = False
             isFlag12 = True
-            qlyqText = ''
+            titleText = ''
             for i in range(len(doc.Paragraphs)):
                 paragraphString = re.sub(r'[，, ]{1,}','',str(doc.Paragraphs[i]))  # “权 利 要 求 书”或者“，权 利 要 求 书”的格式，需要将逗号和空格去掉
                 logging.info("doc.Paragraphs: %s",paragraphString.strip())
                 if paragraphString.strip() == beforeMC:
                     isFlag11 = True   
-                    qlyqText = str(doc.Paragraphs[i]).strip()  # 未替换逗号或者空格之前的“说明书摘要”或者“权利要求书”或者“说明书”
+                    titleText = str(doc.Paragraphs[i]).strip()  # 未替换逗号或者空格之前的“说明书摘要”或者“权利要求书”或者“说明书”
                 if paragraphString.strip() == afterMC:
                     isFlag12 = False
                 if isFlag11 and isFlag12:
@@ -167,9 +167,82 @@ def main_qc():
                         paraNum = parag.Range.ListFormat.ListValue   # 段落编号
                         paramNumStr = "" if paraNum == 0 else str(paraNum) + "."
                         Content = Content + paramNumStr + str(doc.Paragraphs[i]).strip() + '\n'
-            l = len(qlyqText) + 1
-            Content = Content[l:]
-        logging.info("Content: %s", Content)
+            l = len(titleText) + 1
+            if len(Content) > l:
+                Content = Content[l:]
+
+            # 若还未定位到想要的段落，则通过其他方式获取到相应的段落
+            if Content == "":
+                # 获取整篇文章的内容
+                AllText = ""
+                for i in range(len(doc.Paragraphs)): 
+                    AllText = AllText + str(doc.Paragraphs[i]).strip() + '\n'
+                logging.info("AllText : %s",AllText)
+                if len(AllText) != 0:
+                    oneList = ['1.','1．','1、','1 ']    # 段落编号权利要求1（数字+.或者数字+．或者数字+、或者数字+空格）
+                    jsly = "技术领域"
+                    oneIndex = -1
+                    jslyIndex = -1
+                    for one in oneList:
+                        index = AllText.find(one)
+                        if index != -1:
+                            oneIndex = index
+                    # 获取说明书关键字“技术领域”
+                    index = AllText.find(jsly)
+                    if index != -1:
+                        jslyIndex = index
+                    
+                    if beforeMC == "说明书摘要":
+                        # 没找到权利要求1，也没找到说明书中的关键字“技术领域”，则全文都是说明书摘要
+                        if oneIndex == -1 and jslyIndex == -1:
+                            index = AllText.find("说明书摘要")
+                            if index != -1:
+                                Content = AllText[index+5:]
+                            else:
+                                Content = AllText
+                        if oneIndex != -1:
+                            index = AllText.find("说明书摘要")
+                            if index != -1:
+                                if index + 5 <= oneIndex:
+                                    Content = AllText[index+5:oneIndex]
+                            else:
+                                Content = AllText[:oneIndex]
+            
+                    if beforeMC == "权利要求书":
+                        if oneIndex != -1:
+                            if jslyIndex == -1:
+                                Content = AllText[oneIndex:]
+                            else:
+                                step = 0
+                                num = 0
+                                while jslyIndex -step >=0:
+                                    targetStr = AllText[jslyIndex - step]
+                                    step = step + 1
+                                    if targetStr == '\n':
+                                        num = num + 1
+                                    if num == 2:
+                                        endqlyqIndex = jslyIndex - step
+                                        break
+                                if oneIndex < endqlyqIndex:
+                                    Content = AllText[oneIndex:endqlyqIndex]
+
+                    if beforeMC == "说明书":
+                        if jslyIndex != -1:
+                            Content = AllText[jslyIndex:]
+                            step = 0
+                            num = 0
+                            smsIndex = jslyIndex
+                            while jslyIndex - step >=0:
+                                targetStr = AllText[jslyIndex - step]
+                                step = step + 1
+                                if targetStr == '\n':
+                                    num = num + 1
+                                if num == 2:
+                                    smsIndex = jslyIndex - step
+                                    break
+                            Content = AllText[smsIndex:]
+
+        logging.info("Content: %s",Content)
 
         return Content
 
@@ -236,7 +309,7 @@ def main_qc():
             qlyqContent = getPartContent(doc,wordhandle,qlyqsIndex,"权利要求书","说明书")
             logging.info("XXXXXXXqlyqContent: %s",qlyqContent)
            
-
+            
    
             if funcNum == 2:
                 # Function1: 判断说明书摘要文字个数
@@ -363,7 +436,6 @@ def main_qc():
                 
 
 
-  
             # qlyq2.checkQLYQ(qlyqContent,wordLen,formatftbj)
             # sms.main_sms(smsContent, ftNum, zhaiyaoName,formatftbj)
             # other.main_other(allString, wordLenth, hasEnglishWord)
@@ -415,17 +487,20 @@ def main_qc():
                 sPos = '%s+%dc' % (pos, len(paraNum))
         logging.info("allPostion: %s" ,allPostion)
 
-        deleteIndexList = []
-        for i in range(len(allPostion)):
-            rowColumList = allPostion[i].split(".")
-            if rowColumList[1] != '0':
-                deleteIndexList.append(i)
-        deleteIndexList.reverse()
-        logging.info("deleteIndex: %s" ,deleteIndexList)     
-        
-        for deleteIndex in deleteIndexList:
-            del indexList[deleteIndex]
-            del paraNumList[deleteIndex]
+        #首先判断段落编号是否存在重复，若有重复，则进行特殊处理,若无重复，则无需进行特殊处理
+        new_allPostion = set(allPostion)
+        if len(allPostion) != len(new_allPostion):
+            deleteIndexList = []
+            for i in range(len(allPostion)):
+                rowColumList = allPostion[i].split(".")
+                if rowColumList[1] != '0':
+                    deleteIndexList.append(i)
+            deleteIndexList.reverse()
+            logging.info("deleteIndex: %s" ,deleteIndexList)     
+            
+            for deleteIndex in deleteIndexList:
+                del indexList[deleteIndex]
+                del paraNumList[deleteIndex]
 
         paracodeList= [re.sub(r"\.|\．|\、| ","",element) for element in paraNumList]
         ##################

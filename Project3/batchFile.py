@@ -357,6 +357,7 @@ def main_bF():
                             if isFlag11 and isFlag12:
                                 for j in range(len(origin_string)):
                                     doc.paragraphs[i].Range.Find.Execute(origin_string[j], True, True, False, False, False, True, 0, False, replaceList2[j], 2)
+                        
 
 
                 '''

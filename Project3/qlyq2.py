@@ -223,17 +223,20 @@ def checkQLYQ(Content,wordLen,formatftbjList):
                 sPos = '%s+%dc' % (pos, len(paraNum))
         logging.info("allPostion: %s" ,allPostion)
 
-        deleteIndexList = []
-        for i in range(len(allPostion)):
-            rowColumList = allPostion[i].split(".")
-            if rowColumList[1] != '0':
-                deleteIndexList.append(i)
-        deleteIndexList.reverse()
-        logging.info("deleteIndex: %s" ,deleteIndexList)     
-        
-        for deleteIndex in deleteIndexList:
-            del indexList[deleteIndex]
-            del paraNumList[deleteIndex]
+        #首先判断段落编号是否存在重复，若有重复，则进行特殊处理,若无重复，则无需进行特殊处理
+        new_allPostion = set(allPostion)
+        if len(allPostion) != len(new_allPostion):
+            deleteIndexList = []
+            for i in range(len(allPostion)):
+                rowColumList = allPostion[i].split(".")
+                if rowColumList[1] != '0':
+                    deleteIndexList.append(i)
+            deleteIndexList.reverse()
+            logging.info("deleteIndex: %s" ,deleteIndexList)     
+            
+            for deleteIndex in deleteIndexList:
+                del indexList[deleteIndex]
+                del paraNumList[deleteIndex]
 
         paracodeList= [re.sub(r"\.|\．|\、| ","",element) for element in paraNumList]
         ################## 
@@ -386,17 +389,20 @@ def checkQLYQ(Content,wordLen,formatftbjList):
                 sPos = '%s+%dc' % (pos, len(paraNum))
         logging.info("allPostion: %s" ,allPostion)
 
-        deleteIndexList = []
-        for i in range(len(allPostion)):
-            rowColumList = allPostion[i].split(".")
-            if rowColumList[1] != '0':
-                deleteIndexList.append(i)
-        deleteIndexList.reverse()
-        logging.info("deleteIndex: %s" ,deleteIndexList)     
-        
-        for deleteIndex in deleteIndexList:
-            del indexList1[deleteIndex]
-            del paraNumList[deleteIndex]
+        #首先判断段落编号是否存在重复，若有重复，则进行特殊处理,若无重复，则无需进行特殊处理
+        new_allPostion = set(allPostion)
+        if len(allPostion) != len(new_allPostion):
+            deleteIndexList = []
+            for i in range(len(allPostion)):
+                rowColumList = allPostion[i].split(".")
+                if rowColumList[1] != '0':
+                    deleteIndexList.append(i)
+            deleteIndexList.reverse()
+            logging.info("deleteIndex: %s" ,deleteIndexList)     
+            
+            for deleteIndex in deleteIndexList:
+                del indexList1[deleteIndex]
+                del paraNumList[deleteIndex]
 
         paracodeList= [re.sub(r"\.|\．|\、| ","",element) for element in paraNumList]
         ##################
@@ -470,17 +476,20 @@ def checkQLYQ(Content,wordLen,formatftbjList):
                 sPos = '%s+%dc' % (pos, len(paraNum))
         logging.info("allPostion: %s" ,allPostion)
 
-        deleteIndexList = []
-        for i in range(len(allPostion)):
-            rowColumList = allPostion[i].split(".")
-            if rowColumList[1] != '0':
-                deleteIndexList.append(i)
-        deleteIndexList.reverse()
-        logging.info("deleteIndex: %s" ,deleteIndexList)     
-        
-        for deleteIndex in deleteIndexList:
-            del indexList[deleteIndex]
-            del paraNumList[deleteIndex]
+        #首先判断段落编号是否存在重复，若有重复，则进行特殊处理,若无重复，则无需进行特殊处理
+        new_allPostion = set(allPostion)
+        if len(allPostion) != len(new_allPostion):
+            deleteIndexList = []
+            for i in range(len(allPostion)):
+                rowColumList = allPostion[i].split(".")
+                if rowColumList[1] != '0':
+                    deleteIndexList.append(i)
+            deleteIndexList.reverse()
+            logging.info("deleteIndex: %s" ,deleteIndexList)     
+            
+            for deleteIndex in deleteIndexList:
+                del indexList[deleteIndex]
+                del paraNumList[deleteIndex]
 
         paracodeList= [re.sub(r"\.|\．|\、| ","",element) for element in paraNumList]
 
@@ -716,7 +725,7 @@ def checkQLYQ(Content,wordLen,formatftbjList):
     # 1、检查敏感词
     res1 = analysisWarn()   
     if res1:
-        result2.append('权利要求书中出现敏感词，已用黄色背景标记')
+        result2.append("权利要求书中出现敏感词，已用黄色背景标记")
 
     # 2、检查主题名称不一致
     singleDict,  strDict = nameDiff()
@@ -871,12 +880,15 @@ def checkQLYQ(Content,wordLen,formatftbjList):
             parag = stringValue[indexList[i]:indexList[i+1]]
         logging.info("checkSymbol Para Text: %s",parag)
 
-        paragText = parag.strip()
+        paragText = parag
+        logging.info("paragText : %s",paragText)
 
         # 每一个段落的起始和结束序列
         start = end
         end = '%s+%dc' % (start, len(paragText))
-
+        logging.info("start: %s", start)
+        logging.info("end : %s", end)
+        logging.info("start,end : %s", text1.get(start,end))
 
         # 检查重复的标点符号
         symbolIndex = [substr.start() for substr in re.finditer(r"[，。、：！,.!&；;]{2,}", paragText)]   
@@ -896,7 +908,8 @@ def checkQLYQ(Content,wordLen,formatftbjList):
             errorNum = errorNum + 1
             r = "权利要求" + paracodeList[i] + "中没有句号。"
             result2.append(r)
-        if (len(symbolList) == 1) and (symbolList[0] != len(paragText) - 1):
+        logging.info("len(paragText) - 1 : %s", len(paragText.strip()) - 1)
+        if (len(symbolList) == 1) and (symbolList[0] != len(paragText.strip()) - 1):
             errorNum = errorNum + 1
             r = "权利要求" + paracodeList[i] + "中只有一个句号，但不在句尾，已用粉色背景标记。"
             result2.append(r)
@@ -1057,7 +1070,7 @@ def checkQLYQ(Content,wordLen,formatftbjList):
                     douHaoPos = endPos
                 partStr = text1.get(p1, douHaoPos)
                 
-                r = "权利要求" + qlyqNum + "中" + "“" + partStr.replace("\n","") + "”" + "有缺乏引用基础的表述。"
+                r = "权利要求" + qlyqNum + "中" + "/*" + partStr.replace("\n","") + "*/" + "有缺乏引用基础的表述。"
                 errorNum = errorNum + 1
 
                 # 处理特殊情况，（例如 wordLen设置为4， KeyStr = "电机上，" 因为以逗号作为结束，所有，partStr = "电机上"， 以字符串长度短的为准 ）
@@ -1155,23 +1168,24 @@ def checkQLYQ(Content,wordLen,formatftbjList):
     
     # 写入到文本框2中
     allResult = allResult + s1 + s2
+    logging.info("text2: %s",allResult)
     text2.insert(1.0,allResult)
 
     # 标记文本框2中的引用基础关键字
     startP = []
     sP = 1.0
     while True:
-        p = text2.search("“",sP, END)
+        p = text2.search("/*",sP, END)
         if p == "":
             break
         else:
-            sP = '%s+%dc' % (p, len("“"))
+            sP = '%s+%dc' % (p, len("/*"))
         startP.append(p)
     logging.info("startP: %s", startP)
     logging.info("flagStrList: %s", flagStrList)
 
     for i in range(len(startP)):
-        p1 = '%s+%dc' % (startP[i], 1)
+        p1 = '%s+%dc' % (startP[i], len("/*"))
         p2 = '%s+%dc' % (p1, len(flagStrList[i]))
         text2.delete(p1, p2)
         text2.insert(p1, flagStrList[i], 'fStr')
