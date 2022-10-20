@@ -1009,7 +1009,7 @@ def checkQLYQ(Content,wordLen,formatftbjList):
         # 获取每个段落的位置
         allNumPos = []
         for paracode in paracodeList:
-            symCode = ['.','．','、','']
+            symCode = ['.','．','、',' ']
             for sym in symCode:
                 numStr = paracode + sym
                 pos = text1.search(numStr, 1.0,END)
@@ -1035,6 +1035,7 @@ def checkQLYQ(Content,wordLen,formatftbjList):
         logging.info("rowColumnAndWordDict: %s", rowColumnAndWordDict)
 
         errorNum = 0
+        deleteList = []  # 不需要在文本框2进进行标红的截词
         for k, v in rowColumnAndWordDict.items():
             qlyqNum, posListIndex = getqlCode(allNumPos, paracodeList, k)  # qlyqNum: 当前引用基础词语所在的权利要求编号  ,posListIndex :当前引用基础词语所在段落开头编号的行列位置在allNumPos列表中的位置
             beqlyqNumList = keyValue2[qlyqNum]      # beqlyqNumList : qlyqNum所引用的权利要求列表
@@ -1051,6 +1052,26 @@ def checkQLYQ(Content,wordLen,formatftbjList):
             p2 = '%s+%dc' % (p1, int(wordLen))
             keyStr = text1.get(p1, p2)
             logging.info("keyStr: %s", keyStr)
+            # 带有标点符号，不能算作是所述后面的关键字，所以应该剔除
+            isflag1 = False  # 带有标点符号的关键字不在文本框2中进行标红显示
+            isflag2 = False
+            
+            symbList = [substr.group() for substr in re.finditer(r"(\&|\“|\”|\‘|\’|\《|\》|\{|\}|\]|\（|\）|\[)", keyStr)]   
+            symbLen = len(symbList)
+            while symbLen != 0:
+                isflag1 = True
+                for symb in symbList:
+                    keyStr = keyStr.replace(symb,"")
+
+                p3 = '%s+%dc' % (p2, symbLen)
+                keyStr = keyStr + text1.get(p2, p3)
+                symbList = [substr.group() for substr in re.finditer(r"(\&|\“|\”|\‘|\’|\《|\》|\{|\}|\]|\（|\）|\[)", keyStr)]   
+                symbLen = len(symbList)
+                p2 = p3
+
+            logging.info("new_keyStr: %s", keyStr)
+
+
             if string.find(keyStr) == -1:
                 qlyqNum, n = getqlCode(allNumPos, paracodeList, k)
 
@@ -1063,13 +1084,15 @@ def checkQLYQ(Content,wordLen,formatftbjList):
                 if douHaoPos == "":
                     douHaoPos = endPos
                 partStr = text1.get(p1, douHaoPos)
-                
+                isflag2 = True
                 r = "权利要求" + qlyqNum + "中" + "/*" + partStr.replace("\n","") + "*/" + "有缺乏引用基础的表述。"
                 errorNum = errorNum + 1
-
+                logging.info("partStr : %s",partStr)
                 # 处理特殊情况，（例如 wordLen设置为4， KeyStr = "电机上，" 因为以逗号作为结束，所有，partStr = "电机上"， 以字符串长度短的为准 ）
-                flagStr = partStr if len(keyStr) > len(partStr) else keyStr
+                flagStr = partStr if len(keyStr) >= len(partStr) else keyStr
                 flagStrList.append(flagStr.replace('\n',''))  
+                if isflag1 and isflag2:
+                    deleteList.append(len(flagStrList) - 1)
 
                 text1.delete(k, p1)
                 text1.insert(k, v, 'yyjccy')
@@ -1077,6 +1100,10 @@ def checkQLYQ(Content,wordLen,formatftbjList):
                 text1.tag_add('yyjccy',k) #申明一个tag,在a位置使用
                 text1.tag_config('yyjccy',background='red') #设置tag即插入文字的大小,颜色等
                 result2.append(r)
+            
+            isflag1 = False
+            isflag2 = False
+        logging.info("deleteList1 : %s",deleteList)
         result1[4] = errorNum   
 
     # 8、判断附图标记说明的数字是否正确
@@ -1177,6 +1204,14 @@ def checkQLYQ(Content,wordLen,formatftbjList):
         startP.append(p)
     logging.info("startP: %s", startP)
     logging.info("flagStrList: %s", flagStrList)
+
+    logging.info("deleteList2: %s", deleteList)
+    for deleteIndex in deleteList:
+        del startP[deleteIndex]
+        del flagStrList[deleteIndex]
+
+    logging.info("new startP: %s", startP)
+    logging.info("new flagStrList: %s", flagStrList)
 
     for i in range(len(startP)):
         p1 = '%s+%dc' % (startP[i], len("/*"))
