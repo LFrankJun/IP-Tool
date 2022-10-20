@@ -163,9 +163,6 @@ def mainUI(title, message):
     root.resizable(0, 0)  # 设置X和Y轴都可改变
 
     
-
-    logging.info("screenwidth: %s", screenwidth)
-    logging.info("screenheight: %s", screenheight)
     # 设置标签
     # lable = Label(root, height=2)  # 标签的大小
     # lable['text'] = message

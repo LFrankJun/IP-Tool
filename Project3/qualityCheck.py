@@ -419,8 +419,9 @@ def main_qc():
     
             ##function:只检查权利要求部分
             if funcNum == 1:
-                qlyq2.checkQLYQ(qlyqContent,wordLen,formatftbj)
-                
+                # qlyq2.checkQLYQ(qlyqContent,wordLen,formatftbj)
+                t1 = threading.Thread(target=QLYQ,args=(qlyqContent,wordLen,formatftbj))
+                t1.start()
 
             ##function:全部检查
             if funcNum == 2:

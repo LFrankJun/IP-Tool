@@ -668,6 +668,8 @@ def checkQLYQ(Content,wordLen,formatftbjList):
 
     width = screenwidth
     height = screenheight
+    logging.info("widthXXX : %s", width)
+    logging.info("heightXXX : %s", height)
     size = '%dx%d+%d+%d' % (width, height,
                             (screenwidth - width)/2, (screenheight - height)/2)
     root.geometry(size)
