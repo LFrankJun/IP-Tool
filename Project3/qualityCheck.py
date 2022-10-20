@@ -488,19 +488,18 @@ def main_qc():
         logging.info("allPostion: %s" ,allPostion)
 
         #首先判断段落编号是否存在重复，若有重复，则进行特殊处理,若无重复，则无需进行特殊处理
-        new_allPostion = set(allPostion)
-        if len(allPostion) != len(new_allPostion):
-            deleteIndexList = []
-            for i in range(len(allPostion)):
-                rowColumList = allPostion[i].split(".")
-                if rowColumList[1] != '0':
-                    deleteIndexList.append(i)
-            deleteIndexList.reverse()
-            logging.info("deleteIndex: %s" ,deleteIndexList)     
-            
-            for deleteIndex in deleteIndexList:
-                del indexList[deleteIndex]
-                del paraNumList[deleteIndex]
+        
+        deleteIndexList = []
+        for i in range(len(allPostion)):
+            rowColumList = allPostion[i].split(".")
+            if rowColumList[1] != '0':
+                deleteIndexList.append(i)
+        deleteIndexList.reverse()
+        logging.info("deleteIndex: %s" ,deleteIndexList)     
+        
+        for deleteIndex in deleteIndexList:
+            del indexList[deleteIndex]
+            del paraNumList[deleteIndex]
 
         paracodeList= [re.sub(r"\.|\．|\、| ","",element) for element in paraNumList]
         ##################
