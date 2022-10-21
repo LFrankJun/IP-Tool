@@ -349,9 +349,12 @@ def main_bF():
                         isFlag11 = False
                         isFlag12 = True
                         for i in range(len(doc.paragraphs)):
-                            if str(doc.paragraphs[i]).strip() == qlyqs:
+                            logging.info("doc.paragraphs[i]XX: %s",str(doc.paragraphs[i]))
+                            paragraphString = ''.join([char for char in str(doc.Paragraphs[i]) if u'\u4e00' <= char <= u'\u9fa5'])  # “权 利 要 求 书”或者“，权 利 要 求 书”的格式，需要将逗号和空格去掉
+                            logging.info("paragraphString: %s",paragraphString)
+                            if paragraphString.strip() == qlyqs:
                                 isFlag11 = True   
-                            if str(doc.paragraphs[i]).strip() == sms:
+                            if paragraphString.strip() == sms:
                                 isFlag12 = False
                             # print(str(doc.paragraphs[i]).strip())
                             if isFlag11 and isFlag12:

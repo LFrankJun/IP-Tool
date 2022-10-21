@@ -154,7 +154,7 @@ def main_qc():
             isFlag12 = True
             titleText = ''
             for i in range(len(doc.Paragraphs)):
-                paragraphString = re.sub(r'[，, ]{1,}','',str(doc.Paragraphs[i]))  # “权 利 要 求 书”或者“，权 利 要 求 书”的格式，需要将逗号和空格去掉
+                paragraphString = ''.join([char for char in str(doc.Paragraphs[i]) if u'\u4e00' <= char <= u'\u9fa5'])  # “权 利 要 求 书”或者“，权 利 要 求 书”的格式，需要将逗号和空格去掉
                 logging.info("doc.Paragraphs: %s",paragraphString.strip())
                 if paragraphString.strip() == beforeMC:
                     isFlag11 = True   
@@ -276,7 +276,7 @@ def main_qc():
             sections = wordhandle.ActiveDocument.Sections  # 所有页眉
             for i in range(len(sections)):
                 name = wordhandle.ActiveDocument.Sections[i].Headers[0]
-                spName = ''.join([char for char in str(name) if u'\u4e00' <= char <= u'\u9fa5'])  # 提取段落中的页眉
+                spName = ''.join([char for char in str(name) if u'\u4e00' <= char <= u'\u9fa5'])  # 提取页眉,有些页眉带有空格或者其他标点符号
                 if spName != "":
                     headNameList.append(spName)
             print("所有的页眉:%s",headNameList)
