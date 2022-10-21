@@ -158,41 +158,102 @@ def main_bF():
             replaceList1 = []  # 具体实施方式
             replaceList2 = []  # 权力要求部分
             notReplaceWordList = [] #不需要被替换的词语
-        
 
-            startIndexList = []  # 附图标记说明和附图标记所在段落行数
-            endIndexList = []     # 具体实施方式所在段落行数
-            for i in range(len(doc.paragraphs)):
-                paraString = str(doc.paragraphs[i]).strip()
-                if paraString.find(targetText1) != -1 or paraString.find(targetText12) != -1 or paraString.find(targetText13) != -1:
-                    startIndexList.append(i)
-                if paraString == targetText2:
-                    endIndexList.append(i)
-
-            # 段落中存在多个附图标记/附图标记说明/具体实施方式
             startIndex = endIndex = 0
-            if len(startIndexList) != 0 and len(endIndexList) != 0:
-                endIndex = endIndexList[0]  # 第一个出现“具体实施方式”的段落
-                # 寻找比具体实施方式段落小，且最靠近具体实施方式的附图标记说明/附图标记段落
-                numberList = []
-                for number in startIndexList:
-                    if number < endIndex:
-                        numberList.append(number)
-                logging.info("numberList:%s",numberList)
-                numberList.sort(reverse=True)
-                startIndex = numberList[0]
+        
+            # 附图标记有可能是以表格的形式存在，所以先判断文章中是否有表格
+            try:
+                table = doc.Tables(1)   # 1 代表文中的第一个表格，如果存在多个表格，默认第一个表格就是附图标记
+            except Exception as e:
+                # 当文中没有表格时，则采用下面方式获取附图标记
+                logging.info("Read table has error: %s", e)
+                startIndexList = []  # 附图标记说明和附图标记所在段落行数
+                endIndexList = []     # 具体实施方式所在段落行数
+                for i in range(len(doc.paragraphs)):
+                    paraString = str(doc.paragraphs[i]).strip()
+                    if paraString.find(targetText1) != -1 or paraString.find(targetText12) != -1 or paraString.find(targetText13) != -1:
+                        startIndexList.append(i)
+                    if paraString == targetText2:
+                        endIndexList.append(i)
+                # 段落中存在多个附图标记/附图标记说明/具体实施方式
+                
+                if len(startIndexList) != 0 and len(endIndexList) != 0:
+                    endIndex = endIndexList[0]  # 第一个出现“具体实施方式”的段落
+                    # 寻找比具体实施方式段落小，且最靠近具体实施方式的附图标记说明/附图标记段落
+                    numberList = []
+                    for number in startIndexList:
+                        if number < endIndex:
+                            numberList.append(number)
+                    logging.info("numberList:%s",numberList)
+                    numberList.sort(reverse=True)
+                    startIndex = numberList[0]
 
 
-            if startIndex != 0 and endIndex != 0:
-                j = startIndex + 1
-                while startIndex <= j < endIndex:
-                    text = str(doc.paragraphs[j]).strip()
-                    if text != '':
-                        new_text = text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
-                        ftbjList.append(new_text)
-                    j = j + 1
+                if startIndex != 0 and endIndex != 0:
+                    j = startIndex + 1
+                    while startIndex <= j < endIndex:
+                        text = str(doc.paragraphs[j]).strip()
+                        if text != '':
+                            new_text = text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
+                            if new_text != '':
+                                ftbjList.append(new_text)
+                        j = j + 1
 
-            logging.info("ftbjList：%s", ftbjList)
+                logging.info("ftbjList：%s", ftbjList)
+
+            else:
+                numSymbolStringList = []  # 标号和含义处于同一个表格里（eg  12:功率单元， 此字符串占用一个小格子）
+                numColumnList = []    # 数字所在的列
+                stringColumnList = [] # 词语所在的列
+                sumColumnsList = []   # 所有列数
+                
+                # 所有的列数
+                sumColumns = table.Columns.Count  #总共的列数
+                sumRows = table.Rows.Count  # 总共的行数
+
+                logging.info("sumRows %s", sumRows)
+                logging.info("sumColumns： %s", sumColumns)
+
+                for colum in range(1, sumColumns + 1):
+                    sumColumnsList.append(colum)
+                logging.info("sumColumnsList %s", sumColumnsList)
+
+                # 找到是标号的所在的列
+                for row in table.Rows:  #遍历表格每行
+                    colum = 0
+                    for cell in row.Cells:  #遍历每行中的有效列
+                        colum = colum + 1
+                        tableText = cell.Range.Text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
+                        if tableText != "":
+                            numSymbolStringList.append(tableText)
+                            if str(tableText).encode('UTF-8').isalnum(): # 所有字段仅是数字或者英文字母
+                                numColumnList.append(colum) 
+                numColumnList = list(set(numColumnList)) # 删除重复的列数
+                numColumnList.sort()
+
+                if len(numColumnList) > 0:
+                    for num in sumColumnsList:
+                        if num not in numColumnList:
+                            stringColumnList.append(num)
+                    logging.info("numColumnList:%s",numColumnList)
+                    logging.info("stringColumnList:%s",stringColumnList)
+                    
+                    if len(numColumnList) == len(stringColumnList):
+                        for i in range(len(numColumnList)):
+                            j = 1
+                            while j <= sumRows:
+                                num = table.Rows(j).Cells(numColumnList[i]).Range.Text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
+                                string = table.Rows(j).Cells(stringColumnList[i]).Range.Text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
+                                j = j + 1
+                                new_num = re.sub(r"~|-", "",num)  # 特殊情况，例如 101-106：纸卷 或者 101~106：纸卷， 为了方便判断，暂时先去掉-和~
+                                if new_num.encode('UTF-8').isalnum(): # 字段仅是数字或者英文字母 （有些表格第一行的列中的字符分别是“标号”和“含义”，而不是 数字和词语，所以这种情况下要考虑到）
+                                    combineStr = num + '：' + string # 组合后的字段（ 数字：词语）
+                                    ftbjList.append(combineStr)
+                else:
+                    ftbjList = numSymbolStringList  # 没有任何仅有数字或者字母的小表格，说明表格里的形式是：数字（字母）+标点符号+词语，或者词语+标点符号+数字（字母），不做任何处理
+
+                logging.info("table info:%s",ftbjList)
+  
 
             # 对不同的附图标记说明格式进行格式化
             for text in ftbjList:
@@ -203,22 +264,6 @@ def main_bF():
                         formatftbj.append(strValue)
             logging.info("formatftbj: %s",formatftbj)
 
-            # 有些附图标记是用表格写的，分为两列，第一列标题为“标号”，第二列标题为”含义“，对此种情况进行处理
-            column1 = ['标号']
-            column2 = ['含义']
-            tempList = []  # 保存处理后的列表
-            if len(formatftbj) >= 2:
-                if formatftbj[0] in column1 and formatftbj[1] in column2:
-                    for i in range(2,len(formatftbj),2):
-                        num = formatftbj[i]
-                        string = formatftbj[i + 1]
-                        tempList.append(num + '：' + string)
-                    logging.info("tempList%s",tempList)
-                
-                    formatftbj = tempList
-
-            logging.info("new formatftbj：%s",formatftbj)
-            
 
             '''
             @function: 被替换的内容
