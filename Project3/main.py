@@ -34,7 +34,8 @@ from reportlab.pdfbase.ttfonts import TTFont
 import concurrent_log_handler
 
 logger = logging.getLogger()
-logger.setLevel(level=logging.DEBUG)
+logging.getLogger().setLevel(logging.INFO)
+# logger.setLevel(level=logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(process)s - %(threadName)s%(thread)d: '
                               '%(message)s')
 

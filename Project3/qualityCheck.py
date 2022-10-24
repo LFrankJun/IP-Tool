@@ -364,17 +364,32 @@ def main_qc():
                     numberList.sort(reverse=True)
                     startIndex = numberList[0]
 
-                
                 if startIndex != 0 and endIndex != 0:
-                    j = startIndex + 1
-                    while startIndex <= j < endIndex:
-                        text = str(doc.paragraphs[j]).strip()
-                        if text != '':
-                            new_text = text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
-                            ftbjList.append(new_text)
-                        j = j + 1
+
+                    # 特殊情况下，有些“附图标记”关键字和附图标号和字段处于一个自然段（eg 附图标记：1、柜体；11、开口；111、第一侧壁；）
+                    text = str(doc.paragraphs[startIndex]).strip()
+                    if (targetText1 in text or targetText12 in text or targetText13 in text) and bool(re.search(r'\d', text)):
+                        indexList = [substr.start() for substr in re.finditer(r"：|:| ", text)] 
+                        if len(indexList) != 0:
+                            text = text[indexList[0] + 1:]
+                            if text != '':
+                                new_text = text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
+                                if new_text != '':
+                                    ftbjList.append(new_text)
+                    else:
+                        j = startIndex + 1
+                        while startIndex <= j < endIndex:
+                            text = str(doc.paragraphs[j]).strip()
+                            logging.info("text: %s", text)
+                            
+                            if text != '':
+                                new_text = text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
+                                if new_text != '':
+                                    ftbjList.append(new_text)
+                            j = j + 1
 
                 logging.info("ftbjList：%s", ftbjList)
+
             else:
                 numSymbolStringList = []  # 标号和含义处于同一个表格里（eg  12:功率单元， 此字符串占用一个小格子）
                 numColumnList = []    # 数字所在的列

@@ -6,6 +6,7 @@ File:   batchFile.py
 Describe: Auto replace text in word document new UI
 """
 
+
 from tkinter import *
 import tkinter.messagebox
 from win32com import client as wc
@@ -34,23 +35,38 @@ def main_bF():
         if tkinter.messagebox.askokcancel('信息提示', '您正在关闭“文字批量替换”窗口！！'):
             root.destroy()
 
-    def writerText(bfilePath, afilePath, sLists):
-        # 提取附图标记说明中的汉字和数字
-        strList = []
-        numList = []
-        for string in sLists:
-            num = ''.join([i for i in string if i.isdigit()])
-            s = ''.join([i for i in string if i.isalpha()])
-            strList.append(s)
-            numList.append(str(num))
-        print("汉字:%s", strList)
-        print("数字：%s", numList)
+    def writerText(bfilePath, afilePath, numList, strList):
+
+        logging.info("numList:%s", numList)
+        logging.info("strList:%s", strList)
+        deleteIndexList = []  
+        # 预处理一下标号（特殊情况，例如 101-106：纸卷 或者 101~106：纸卷）
+        for i in range(len(numList)):
+            twonumList = re.split(r'~|-', numList[i])
+            if len(twonumList) == 2:
+                maxNum = max(int(twonumList[0]),int(twonumList[1]))
+                minNum = min(int(twonumList[0]),int(twonumList[1]))
+
+                if str(minNum).isdigit() and str(maxNum).isdigit():
+                    strWord = strList[i]
+                    deleteIndexList.append(i)
+                    while minNum <= maxNum:
+                        numList.append(str(minNum))
+                        strList.append(strWord)
+                        minNum =  minNum + 1
+        for index in deleteIndexList:
+            del numList[index]  # 删除 101- 106
+            del strList[index]  # 删除对应的附图词语
+        logging.info("new numList:%s", numList)
+        logging.info("new strList:%s", strList)
+
 
         # read your existing PDF
         file = open(bfilePath, "rb")
         existing_pdf = PdfFileReader(file)
         output = PdfFileWriter()
         pageNum = existing_pdf.getNumPages()  # pdf总页数
+        logging.info("pageNum : %s",pageNum)
         for i in range(0, pageNum):
             # 计算pdf页面尺寸
             pdf = pdfplumber.open(bfilePath)  # 打开pdf
@@ -65,11 +81,31 @@ def main_bF():
             words = pdf.pages[i].extract_words()
             for word in words:
                 print("pdf中的内容:%s", word)
+
                 # word['text']中也可能含有xx(xx)的数字形式
                 valueList = []
                 intList = []
-                for s in word['text']:
-                    if s.isdigit():
+
+                # 处理出现cid字符的情况
+                textString = word['text']  # {'text': '(cid:25688)(cid:35201)(cid:38468)(cid:22270)', XXXXXXXXXXX}，textString格式类似这样：'(cid:25688)(cid:35201)(cid:38468)(cid:22270)'
+                logging.info("textString: %s",textString)
+                if 'cid' in textString:
+                    leftIndexList = [substr.start() for substr in re.finditer(r"\(", textString)]  # 所有左边括号的位置
+                    rightIndexList = [substr.start() for substr in re.finditer(r"\)", textString)]  # 所有右边括号的位置
+                    combineStr = ""
+                    if len(leftIndexList) == len(rightIndexList):
+                        for m in range(len(leftIndexList)):
+                            tempStr = textString[leftIndexList[m]:rightIndexList[m]]
+                            numStr = str(tempStr).split(':')  # numStr格式：[cid, 数字]
+                            if len(numStr) == 2:
+                                num = numStr[1]
+                                realChar = chr(int(num))  # cid字符转换为中文字符
+                                combineStr = combineStr + realChar
+                        textString = combineStr
+                logging.info(" new textString: %s", textString)      
+
+                for s in textString:
+                    if s.isdigit() or s.encode( 'UTF-8' ).isalpha():
                         intList.append(s)
                     else:
                         if len(intList) != 0:
@@ -123,6 +159,7 @@ def main_bF():
             packet.seek(0)
             new_pdf = PdfFileReader(packet)
             page = existing_pdf.getPage(i)
+            # logging.info("page: %s",page)
             page.mergePage(new_pdf.getPage(0))
             output.addPage(page)
 
@@ -190,14 +227,28 @@ def main_bF():
 
 
                 if startIndex != 0 and endIndex != 0:
-                    j = startIndex + 1
-                    while startIndex <= j < endIndex:
-                        text = str(doc.paragraphs[j]).strip()
-                        if text != '':
-                            new_text = text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
-                            if new_text != '':
-                                ftbjList.append(new_text)
-                        j = j + 1
+
+                    # 特殊情况下，有些“附图标记”关键字和附图标号和字段处于一个自然段（eg 附图标记：1、柜体；11、开口；111、第一侧壁；）
+                    text = str(doc.paragraphs[startIndex]).strip()
+                    if (targetText1 in text or targetText12 in text or targetText13 in text) and bool(re.search(r'\d', text)):
+                        indexList = [substr.start() for substr in re.finditer(r"：|:| ", text)] 
+                        if len(indexList) != 0:
+                            text = text[indexList[0] + 1:]
+                            if text != '':
+                                new_text = text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
+                                if new_text != '':
+                                    ftbjList.append(new_text)
+                    else:
+                        j = startIndex + 1
+                        while startIndex <= j < endIndex:
+                            text = str(doc.paragraphs[j]).strip()
+                            logging.info("text: %s", text)
+                            
+                            if text != '':
+                                new_text = text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
+                                if new_text != '':
+                                    ftbjList.append(new_text)
+                            j = j + 1
 
                 logging.info("ftbjList：%s", ftbjList)
 
@@ -268,7 +319,8 @@ def main_bF():
             '''
             @function: 被替换的内容
             '''
-
+            pdfNumList = []  # 标记到pdf上的数字
+            pdfStringList = []  # 标记到pdf上的汉字
             for text in formatftbj:
                 wordList = re.split(r'[:、.．： \t]{1,}', text) # text包含此类情况（33a：纸卷）,为把33a识别出来，所以需要提前划分一下
                 if len(wordList) == 2:
@@ -286,6 +338,7 @@ def main_bF():
                 else:
                     num = ''.join([i for i in text if i.isdigit() or i.encode( 'UTF-8' ).isalpha()])
                     string = ''.join([i for i in text if i.isalpha()])
+
                 string_num = string + num
                 string_symbol_num = string + '（' + num + '）'
                 num_point_string = num + '.' + string
@@ -293,6 +346,9 @@ def main_bF():
                 replaceList1.append(string_num)
                 replaceList2.append(string_symbol_num)
                 replaceList3.append(num_point_string)
+
+                pdfNumList.append(num)
+                pdfStringList.append(string)
 
             print("被替换的内容:%s", origin_string)
             print("具体实施方式替换的内容:%s", replaceList1)
@@ -331,7 +387,6 @@ def main_bF():
                 '''
                 @function:包含关系的词语无法做到全部替换，被包含的词语不能进行替换
                 '''
-                
                 for inWordList in includeMoreList:
                     for m in range(len(inWordList)):
                         for n in range(len(inWordList)):
@@ -341,6 +396,7 @@ def main_bF():
                                     notReplaceWordList.append(inWordList[m])
                                     break
                 logging.info("notReplaceWordList: %s", notReplaceWordList)
+                notReplaceWordList = list(set(notReplaceWordList))  # 避免有重复的词语出现
 
                 '''
                 @function:删除不需要替换的词语
@@ -443,7 +499,7 @@ def main_bF():
             # doc.Close()
             # wordhandle.Quit()
 
-        return replaceList3, notReplaceWordList
+        return pdfNumList, pdfStringList, notReplaceWordList
 
 
     # 进行批量替换操作
@@ -467,27 +523,24 @@ def main_bF():
             
             if folderPath.endswith('.docx') or folderPath.endswith('.doc'):
                 endHint = '批量替换处理完毕啦啦！！！'
-                strList, inList = auto_change_word(word, folderPath, funcNum)  # strList为要标记到pdf上的字符串内容
+                pdfNumList, pdfStringList, inList = auto_change_word(word, folderPath, funcNum)  # strList为要标记到pdf上的字符串内容
                 if len(inList) > 0:
                     endHint = endHint + "附图标记中存在有包含关系的名词：" + str(inList) + "未在Word文件中进行替换,请注意一下！"
-                if funcNum != 1 and len(strList) >= 1:
+                if funcNum != 1 and len(pdfNumList) >= 1 and len(pdfStringList) >= 1:
                     tkinter.messagebox.showinfo('提示',endHint)
 
                 # 在PDF上进行标记
                 if funcNum == 1:
                     if folderPdfP == "":
                         tkinter.messagebox.showinfo('提示',"请拖放一个pdf文件！")
-                    if folderPdfP != "" and len(strList) != 0:
+                    if folderPdfP != "" and len(pdfNumList) != 0 and len(pdfStringList) != 0:
                         folderPdfPath = folderPdfP.replace("\\","/")
                         logging.info("batchFileReplace folderPdfPath: %s", folderPdfPath)
                         if folderPdfPath.endswith('.pdf'):
                             before_filePath = folderPdfPath
                             after_filePath = folderPdfPath[:-4] + '_new' + '.pdf'
-                            writerText(before_filePath, after_filePath, strList)   
-                            endHint = 'PDF附图标记完毕！'
-                            if len(inList) > 0:
-                                endHint = endHint + "附图标记中存在有包含关系的名词：" + str(inList) + "未在PDF文件上进行标记,请注意一下！"
-                            tkinter.messagebox.showinfo('提示',endHint)
+                            writerText(before_filePath, after_filePath, pdfNumList, pdfStringList)   
+                            tkinter.messagebox.showinfo('提示','PDF附图标记完毕！')
         else:
             tkinter.messagebox.showinfo('提示','您未拖放一个word文件！')
 
