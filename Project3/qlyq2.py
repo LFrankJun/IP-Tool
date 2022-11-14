@@ -1115,11 +1115,11 @@ def checkQLYQ(Content,wordLen,formatftbjList):
     for text in formatftbjList:
         wordList = re.split(r'[:、.．： \t]{1,}', text) # text包含此类情况（33a：纸卷）,为把33a识别出来，所以需要提前划分一下
         if len(wordList) == 2:
-            if wordList[0].isalnum():
+            if wordList[0].encode('UTF-8').isalnum():
                 num = wordList[0]
                 string = wordList[1]
             else:
-                indexList = [substr.start() for substr in re.finditer(r"~|-", wordList[0])]    # 特殊情况，例如 101-106：纸卷 或者 101~106：纸卷
+                indexList = [substr.start() for substr in re.finditer(r"~|-|\(|\（", wordList[0])]    # 特殊情况，例如 101-106：纸卷 或者 101~106：纸卷或者11（12）：纸卷
                 if len(indexList) == 0:
                     num = wordList[1]
                     string = wordList[0]

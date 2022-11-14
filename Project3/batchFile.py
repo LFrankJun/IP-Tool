@@ -70,7 +70,7 @@ def main_bF():
         for i in range(0, pageNum):
             # 计算pdf页面尺寸
             pdf = pdfplumber.open(bfilePath)  # 打开pdf
-            page = pdf.pages[i]  # 每一页的尺寸相同，所以选择第一页
+            page = pdf.pages[i]  
             # pageWidth = page.width    # 页面的宽度
             pageHeight = page.height  # 页面的高度
             # 存放所有要写的数字和名称,以及对应的位置坐标
@@ -197,17 +197,164 @@ def main_bF():
             notReplaceWordList = [] #不需要被替换的词语
 
             startIndex = endIndex = 0
-        
-            # 附图标记有可能是以表格的形式存在，所以先判断文章中是否有表格
-            try:
-                table = doc.Tables(1)   # 1 代表文中的第一个表格，如果存在多个表格，默认第一个表格就是附图标记
-            except Exception as e:
-                # 当文中没有表格时，则采用下面方式获取附图标记
-                logging.info("Read table has error: %s", e)
+
+            
+
+            # 附图标记有可能是以表格的形式存在，所以先判断文章中是否有表格，同时有可能表格不是用来记录附图标记，只是普通文本内容中的表格，也要对此进行判断
+
+            tableCount = doc.Tables.Count  # word中所有表格的数量
+            logging.info("tableCount:%s",tableCount)
+
+            hasTable = False   # 存在目标表格的标记
+            if tableCount >= 1:
+                targetIndexList1 = []  #存储所有的附图标记关键字在全文中的位置
+                targetIndexList2 = []  #存储所有的具体实施方式关键字在全文中的位置
+                tableIndexList = []   #存储所有的表格在全文中的位置
+
+                # 因为光标有可能不在文章开头位置，所以首先将搜索关键字的光标移到全文中的第一个关键字位置，这样每次搜索时都是基于文档开头进行搜索，不会遗漏关键字
+                while wordhandle.Selection.Find.Execute(targetText1,False, False, False, False, False, False, 0, True,"",0):
+                    pass
+                try:
+                    wordhandle.Selection.GoTo(wc.constants.wdGoToLine, wc.constants.wdGoToPrevious, Count=1)  # 基于上面的位置 再将光标向上移动一行，这样不会遗漏第一个关键字，不执行此行代码会遗漏
+                except Exception as e:
+                    logging.info("targetText1 go to previous line:%s",e)
+
+                # 全文从上往下搜索
+                while wordhandle.Selection.Find.Execute(targetText1,False, False, False, False, False, True, 0, True,"",0):  
+                    targetIndex = wordhandle.Selection.Range.Start  # 关键字中第一个字的位置
+                    targetIndexList1.append(targetIndex)
+
+                
+                while wordhandle.Selection.Find.Execute(targetText12,False, False, False, False, False, False, 0, True,"",0):
+                    pass
+                try:
+                    wordhandle.Selection.GoTo(wc.constants.wdGoToLine, wc.constants.wdGoToPrevious, Count=1)
+                except Exception as e:
+                    logging.info("targetText12 go to previous line:%s",e)
+                while wordhandle.Selection.Find.Execute(targetText12,False, False, False, False, False, True, 0, True,"",0):  
+                    targetIndex = wordhandle.Selection.Range.Start  
+                    targetIndexList1.append(targetIndex)
+
+
+                while wordhandle.Selection.Find.Execute(targetText13,False, False, False, False, False, False, 0, True,"",0):
+                    pass
+                try:
+                    wordhandle.Selection.GoTo(wc.constants.wdGoToLine, wc.constants.wdGoToPrevious, Count=1)
+                except Exception as e:
+                    logging.info("targetText13 go to previous line:%s",e)
+                while wordhandle.Selection.Find.Execute(targetText13,False, False, False, False, False, True, 0, True,"",0):  
+                    targetIndex = wordhandle.Selection.Range.Start  
+                    targetIndexList1.append(targetIndex)
+                
+                targetIndexList1 = list(set(targetIndexList1))  # 去重处理
+                logging.info("targetIndexList1：%s", targetIndexList1)
+
+                # 获取具体实施方式所在的位置
+                while wordhandle.Selection.Find.Execute(targetText2,False, False, False, False, False, False, 0, True,"",0):
+                    pass
+                try:
+                    wordhandle.Selection.GoTo(wc.constants.wdGoToLine, wc.constants.wdGoToPrevious, Count=1)
+                except Exception as e:
+                    logging.info("targetText2 go to previous line:%s",e)
+
+                while wordhandle.Selection.Find.Execute(targetText2,False, False, False, False, False, True, 0, True,"",0):  
+                    targetIndex = wordhandle.Selection.Range.Start  
+                    targetIndexList2.append(targetIndex)
+                logging.info("targetIndexList2%s", targetIndexList2)
+
+                # 当存在多个“附图标记”和“具体实施方式”的关键字时，默认第一次出现“具体实施方式”的为基准，从而确认附图标记
+                jutissfsIndex = ftbjIndex = 0    
+                if len(targetIndexList1) != 0 and len(targetIndexList2) != 0:
+                    jutissfsIndex = targetIndexList2[0]  # 第一个出现“具体实施方式”的位置
+                    # 寻找比具体实施方式段落小，且最靠近具体实施方式的附图标记说明/附图标记段落
+                    allftbjList = []
+                    for number in targetIndexList1:
+                        if number < jutissfsIndex:
+                            allftbjList.append(number)
+                    logging.info("allftbjList:%s",allftbjList)
+                    allftbjList.sort(reverse=True)
+                    ftbjIndex = allftbjList[0]
+
+                # 获取所有的表格所在位置
+                for t in range(1,tableCount + 1):
+                    tableIndex = doc.Range().Tables(t).Range.Start  # 表格所在位置,表格序列是从1开始，不是从0
+                    tableIndexList.append(tableIndex)
+                logging.info("tableIndexList: %s", tableIndexList)
+
+                # 理论上只要表格的位置处于ftbjIndex和jutissfsIndex之间，则可认为是填写有附图标记的表格，而且有且只有一个，为预防出现多个，默认第一个出现的表格是目标表格
+                targetTableNum = -1 # 初始化目标表格
+                for t in range(len(tableIndexList)):
+                    if tableIndexList[t] > ftbjIndex and tableIndexList[t] < jutissfsIndex:
+                        targetTableNum = t + 1
+                        break
+
+                if targetTableNum != -1:
+                    hasTable = True
+                    try:
+                        table = doc.Tables(targetTableNum)
+                    except Exception as e:
+                        logging.info("Read table has error: %s", e)
+                    else:
+                        numSymbolStringList = []  # 标号和含义处于同一个表格里（eg  12:功率单元， 此字符串占用一个小格子）
+                        numColumnList = []    # 数字所在的列
+                        stringColumnList = [] # 词语所在的列
+                        sumColumnsList = []   # 所有列数
+                        
+                        # 所有的列数
+                        sumColumns = table.Columns.Count  #总共的列数
+                        sumRows = table.Rows.Count  # 总共的行数
+
+                        logging.info("sumRows %s", sumRows)
+                        logging.info("sumColumns： %s", sumColumns)
+
+                        for colum in range(1, sumColumns + 1):
+                            sumColumnsList.append(colum)
+                        logging.info("sumColumnsList %s", sumColumnsList)
+
+                        # 找到是标号的所在的列
+                        for row in table.Rows:  #遍历表格每行
+                            colum = 0
+                            for cell in row.Cells:  #遍历每行中的有效列
+                                colum = colum + 1
+                                tableTextList = cell.Range.Text.split('\r')  # 一个格子里面可能放好几行的字符
+                                for tableText in tableTextList:
+                                    tableText = tableText.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
+                                    if tableText != "":
+                                        numSymbolStringList.append(tableText)
+                                        if str(tableText).encode('UTF-8').isalnum(): # 所有字段仅是数字或者英文字母
+                                            numColumnList.append(colum) 
+                        numColumnList = list(set(numColumnList)) # 删除重复的列数
+                        numColumnList.sort()
+
+                        if len(numColumnList) > 0:
+                            for num in sumColumnsList:
+                                if num not in numColumnList:
+                                    stringColumnList.append(num)
+                            logging.info("numColumnList:%s",numColumnList)
+                            logging.info("stringColumnList:%s",stringColumnList)
+                            
+                            if len(numColumnList) == len(stringColumnList):
+                                for i in range(len(numColumnList)):
+                                    j = 1
+                                    while j <= sumRows:
+                                        num = table.Rows(j).Cells(numColumnList[i]).Range.Text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
+                                        string = table.Rows(j).Cells(stringColumnList[i]).Range.Text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
+                                        j = j + 1
+                                        new_num = re.sub(r"~|-|\(|\（|\)|\）", "",num)  # 特殊情况，例如 101-106：纸卷 或者 101~106：纸卷或者11（12）：纸卷， 为了方便判断，暂时先去掉-和~和()
+                                        if new_num.encode('UTF-8').isalnum(): # 字段仅是数字或者英文字母 （有些表格第一行的列中的字符分别是“标号”和“含义”，而不是 数字和词语，所以这种情况下要考虑到）
+                                            combineStr = num + '：' + string # 组合后的字段（ 数字：词语）
+                                            ftbjList.append(combineStr)
+                        else:
+                            ftbjList = numSymbolStringList  # 没有任何仅有数字或者字母的小表格，说明表格里的形式是：数字（字母）+标点符号+词语，或者词语+标点符号+数字（字母），不做任何处理
+
+                        logging.info("table info:%s",ftbjList)
+
+
+            if tableCount == 0 or (not hasTable):
                 startIndexList = []  # 附图标记说明和附图标记所在段落行数
                 endIndexList = []     # 具体实施方式所在段落行数
-                for i in range(len(doc.paragraphs)):
-                    paraString = str(doc.paragraphs[i]).strip()
+                for i in range(1, len(doc.Paragraphs) + 1):
+                    paraString = str(doc.Paragraphs(i)).strip()
                     if paraString.find(targetText1) != -1 or paraString.find(targetText12) != -1 or paraString.find(targetText13) != -1:
                         startIndexList.append(i)
                     if paraString == targetText2:
@@ -229,7 +376,7 @@ def main_bF():
                 if startIndex != 0 and endIndex != 0:
 
                     # 特殊情况下，有些“附图标记”关键字和附图标号和字段处于一个自然段（eg 附图标记：1、柜体；11、开口；111、第一侧壁；）
-                    text = str(doc.paragraphs[startIndex]).strip()
+                    text = str(doc.Paragraphs(startIndex)).strip()
                     if (targetText1 in text or targetText12 in text or targetText13 in text) and bool(re.search(r'\d', text)):
                         indexList = [substr.start() for substr in re.finditer(r"：|:| ", text)] 
                         if len(indexList) != 0:
@@ -241,7 +388,7 @@ def main_bF():
                     else:
                         j = startIndex + 1
                         while startIndex <= j < endIndex:
-                            text = str(doc.paragraphs[j]).strip()
+                            text = str(doc.Paragraphs(j)).strip()
                             logging.info("text: %s", text)
                             
                             if text != '':
@@ -252,59 +399,6 @@ def main_bF():
 
                 logging.info("ftbjList：%s", ftbjList)
 
-            else:
-                numSymbolStringList = []  # 标号和含义处于同一个表格里（eg  12:功率单元， 此字符串占用一个小格子）
-                numColumnList = []    # 数字所在的列
-                stringColumnList = [] # 词语所在的列
-                sumColumnsList = []   # 所有列数
-                
-                # 所有的列数
-                sumColumns = table.Columns.Count  #总共的列数
-                sumRows = table.Rows.Count  # 总共的行数
-
-                logging.info("sumRows %s", sumRows)
-                logging.info("sumColumns： %s", sumColumns)
-
-                for colum in range(1, sumColumns + 1):
-                    sumColumnsList.append(colum)
-                logging.info("sumColumnsList %s", sumColumnsList)
-
-                # 找到是标号的所在的列
-                for row in table.Rows:  #遍历表格每行
-                    colum = 0
-                    for cell in row.Cells:  #遍历每行中的有效列
-                        colum = colum + 1
-                        tableText = cell.Range.Text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
-                        if tableText != "":
-                            numSymbolStringList.append(tableText)
-                            if str(tableText).encode('UTF-8').isalnum(): # 所有字段仅是数字或者英文字母
-                                numColumnList.append(colum) 
-                numColumnList = list(set(numColumnList)) # 删除重复的列数
-                numColumnList.sort()
-
-                if len(numColumnList) > 0:
-                    for num in sumColumnsList:
-                        if num not in numColumnList:
-                            stringColumnList.append(num)
-                    logging.info("numColumnList:%s",numColumnList)
-                    logging.info("stringColumnList:%s",stringColumnList)
-                    
-                    if len(numColumnList) == len(stringColumnList):
-                        for i in range(len(numColumnList)):
-                            j = 1
-                            while j <= sumRows:
-                                num = table.Rows(j).Cells(numColumnList[i]).Range.Text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
-                                string = table.Rows(j).Cells(stringColumnList[i]).Range.Text.replace('\x07',' ').replace('\r',' ').replace('\t',' ').replace('\b',' ').strip()
-                                j = j + 1
-                                new_num = re.sub(r"~|-", "",num)  # 特殊情况，例如 101-106：纸卷 或者 101~106：纸卷， 为了方便判断，暂时先去掉-和~
-                                if new_num.encode('UTF-8').isalnum(): # 字段仅是数字或者英文字母 （有些表格第一行的列中的字符分别是“标号”和“含义”，而不是 数字和词语，所以这种情况下要考虑到）
-                                    combineStr = num + '：' + string # 组合后的字段（ 数字：词语）
-                                    ftbjList.append(combineStr)
-                else:
-                    ftbjList = numSymbolStringList  # 没有任何仅有数字或者字母的小表格，说明表格里的形式是：数字（字母）+标点符号+词语，或者词语+标点符号+数字（字母），不做任何处理
-
-                logging.info("table info:%s",ftbjList)
-  
 
             # 对不同的附图标记说明格式进行格式化
             for text in ftbjList:
@@ -324,11 +418,11 @@ def main_bF():
             for text in formatftbj:
                 wordList = re.split(r'[:、.．： \t]{1,}', text) # text包含此类情况（33a：纸卷）,为把33a识别出来，所以需要提前划分一下
                 if len(wordList) == 2:
-                    if wordList[0].isalnum():
+                    if wordList[0].encode('UTF-8').isalnum():
                         num = wordList[0]
                         string = wordList[1]
                     else:
-                        indexList = [substr.start() for substr in re.finditer(r"~|-", wordList[0])]    # 特殊情况，例如 101-106：纸卷 或者 101~106：纸卷
+                        indexList = [substr.start() for substr in re.finditer(r"~|-|\(|\（", wordList[0])]    # 特殊情况，例如 101-106：纸卷 或者 101~106：纸卷 或者11（12）：纸卷
                         if len(indexList) == 0:
                             num = wordList[1]
                             string = wordList[0]
@@ -414,8 +508,8 @@ def main_bF():
                 '''
                 headNameList = []
                 sections = wordhandle.ActiveDocument.Sections  # 所有页眉
-                for i in range(len(sections)):
-                    name = wordhandle.ActiveDocument.Sections[i].Headers[0]
+                for i in range(1,len(sections) + 1):
+                    name = wordhandle.ActiveDocument.Sections(i).Headers(1)
                     logging.info("name: %s",str(name))
                     spName = ''.join([char for char in str(name) if u'\u4e00' <= char <= u'\u9fa5'])  # 提取段落中的页眉
                     if spName != "":
@@ -427,13 +521,14 @@ def main_bF():
                 for i in range(len(headNameList)):
                         string = headNameList[i]
                         if "权利要求书" == str(string):
-                            qlyqsIndex.append(i)
+                            qlyqsIndex.append(i + 1)
                         if "说明书" == str(string):
-                            smsIndex.append(i)
+                            smsIndex.append(i + 1)
                 logging.info("qlyqsIndex:%s",qlyqsIndex)
                 logging.info("smsIndex:%s",smsIndex)
 
 
+               
                 '''
                 @function:只替换权利要求书的内容或者全部替换
                 '''
@@ -442,25 +537,24 @@ def main_bF():
                         # 第3节的段落
                         for index in qlyqsIndex:
                             for i in range(len(origin_string)):
-                                wordhandle.ActiveDocument.Sections[index].Range.Find.Execute(origin_string[i], True, True, False, False, False,
+                                wordhandle.ActiveDocument.Sections(index).Range.Find.Execute(origin_string[i], True, True, False, False, False,
                                                                                         True, 0, False, replaceList2[i], 2)
                     else:
                         qlyqs = "权利要求书"
                         sms = "说明书"
                         isFlag11 = False
                         isFlag12 = True
-                        for i in range(len(doc.paragraphs)):
-                            logging.info("doc.paragraphs[i]XX: %s",str(doc.paragraphs[i]))
-                            paragraphString = ''.join([char for char in str(doc.Paragraphs[i]) if u'\u4e00' <= char <= u'\u9fa5'])  # “权 利 要 求 书”或者“，权 利 要 求 书”的格式，需要将逗号和空格去掉
+                        for i in range(1, len(doc.Paragraphs) + 1):
+                            logging.info("doc.Paragraphs(i)XX: %s",str(doc.Paragraphs(i)))
+                            paragraphString = ''.join([char for char in str(doc.Paragraphs(i)) if u'\u4e00' <= char <= u'\u9fa5'])  # “权 利 要 求 书”或者“，权 利 要 求 书”的格式，需要将逗号和空格去掉
                             logging.info("paragraphString: %s",paragraphString)
                             if paragraphString.strip() == qlyqs:
                                 isFlag11 = True   
                             if paragraphString.strip() == sms:
                                 isFlag12 = False
-                            # print(str(doc.paragraphs[i]).strip())
                             if isFlag11 and isFlag12:
                                 for j in range(len(origin_string)):
-                                    doc.paragraphs[i].Range.Find.Execute(origin_string[j], True, True, False, False, False, True, 0, False, replaceList2[j], 2)
+                                    doc.Paragraphs(i).Range.Find.Execute(origin_string[j], True, True, False, False, False, True, 0, False, replaceList2[j], 2)
                         
 
 
@@ -472,24 +566,24 @@ def main_bF():
                     if len(smsIndex) != 0:
                         for index in smsIndex:
                             startIndex = -1
-                            for i in range(len(wordhandle.ActiveDocument.Sections[index].Range.Paragraphs)):
-                                if str(wordhandle.ActiveDocument.Sections[index].Range.Paragraphs[i]).strip() == '具体实施方式':
+                            for i in range(1, len(wordhandle.ActiveDocument.Sections(index).Range.Paragraphs) + 1):
+                                if str(wordhandle.ActiveDocument.Sections(index).Range.Paragraphs(i)).strip() == '具体实施方式':
                                     startIndex = i
                                 if startIndex != -1:
                                     for j in range(len(origin_string)):
-                                        wordhandle.ActiveDocument.Sections[index].Range.Paragraphs[i].Range.Find.Execute(origin_string[j], True,
+                                        wordhandle.ActiveDocument.Sections(index).Range.Paragraphs(i).Range.Find.Execute(origin_string[j], True,
                                                                                                                     True, False, False, False,
                                                                                                                     True, 0, False,
                                                                                                                     replaceList1[j], 2)
                     else:
                         jtssfs = '具体实施方式'
                         isFlag21 = False
-                        for i in range(endIndex, len(doc.paragraphs)):
-                            if str(doc.paragraphs[i]).strip() == jtssfs:
+                        for i in range(endIndex, len(doc.Paragraphs) + 1):
+                            if str(doc.Paragraphs(i)).strip() == jtssfs:
                                 isFlag21 = True
                             if isFlag21:
                                 for j in range(len(origin_string)):
-                                        doc.paragraphs[i].Range.Find.Execute(origin_string[j], True, True, False, False, False, True, 0, False, replaceList1[j], 2)
+                                        doc.Paragraphs(i).Range.Find.Execute(origin_string[j], True, True, False, False, False, True, 0, False, replaceList1[j], 2)
 
             else:
                 tkinter.messagebox.showinfo('提示','未找到附图标记，请检查是否存在附图标记的内容')
@@ -505,7 +599,9 @@ def main_bF():
     # 进行批量替换操作
     def batchFileReplace(funcNum):
 
-        word = wc.Dispatch("Word.Application")
+        # word = wc.Dispatch("Word.Application")
+        word = wc.gencache.EnsureDispatch("Word.Application")
+        
         word.Visible = 1  # 0:后台运行，不显示； 1:打开文档，直接显示
         word.DisplayAlerts = 0  # 不警告
 
@@ -627,7 +723,7 @@ def main_bF():
     allCheck.grid(row=0, column=4)
     
 
-    root.protocol("WM_DELETE_WINDOW", close_callback)
+    # root.protocol("WM_DELETE_WINDOW", close_callback)
     root.mainloop()
 
     

@@ -33,6 +33,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import concurrent_log_handler
 
+
 logger = logging.getLogger()
 logging.getLogger().setLevel(logging.INFO)
 # logger.setLevel(level=logging.DEBUG)
