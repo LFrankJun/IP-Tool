@@ -1,9 +1,9 @@
 """
-Time:    2022/10/11
+Time:    2022/11/30
 Author:  Li YuanJun
-Version: V3.0
+Version: V3.9
 File:    main.py
-Describe: function(batch file replace、zhaiyao、quanliyaoqiu、other and help)
+Describe: fix bug
 """
 
 import logging

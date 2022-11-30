@@ -157,13 +157,14 @@ def getFormat(pCList, nlist):
     for key, value in jsonValue.items():
         tempList = copy.deepcopy(value)  # 深拷贝
         for v in value:
-            if int(key) <= v:
+            if int(key) == v:
                 tempList.remove(v)  # 删除掉超前引用权利数值
-                tempList.append(-1) # 添加标记作为后面判断权利关系混乱的标记,不能直接添加到value列表中
+                # tempList.append() # 添加标记作为后面判断权利关系混乱的标记,不能直接添加到value列表中
         jsonValue[str(key)] = tempList  # 替换keyvalue列表
 
     logging.info("after-json: %s",jsonValue)
 
+    # 将权利要求和其引用的所有权利放置在一起（eg:1:[],2:[1],3:[1,2],4:[1,2,3]）
     newStr = "{"
     for key, value in jsonValue.items():
         for v in value:
@@ -175,6 +176,7 @@ def getFormat(pCList, nlist):
         newStr = newStr + '"' + key + '"' + ':' + str(value) + ','
     newStr = newStr[:-1]
     newStr = newStr + '}'
+    logging.info("newStr: %s", newStr)
 
     return newStr
 

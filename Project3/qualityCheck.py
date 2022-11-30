@@ -490,6 +490,8 @@ def main_qc():
             if tableCount == 0 or (not hasTable):
                 startIndexList = []  # 附图标记说明和附图标记所在段落行数
                 endIndexList = []     # 具体实施方式所在段落行数
+                startIndex = endIndex = 0
+                
                 for i in range(1, len(doc.Paragraphs) + 1):
                     paraString = str(doc.Paragraphs(i)).strip()
                     if paraString.find(targetText1) != -1 or paraString.find(targetText12) != -1 or paraString.find(targetText13) != -1:
