@@ -372,6 +372,7 @@ def main_qc():
                     targetIndex = wordhandle.Selection.Range.Start  
                     targetIndexList1.append(targetIndex)
 
+                wordhandle.Selection.GoTo(wc.constants.wdGoToLine, wc.constants.wdGoToPrevious, Count=1)  # 将框选区域的光标移动到正文中，解决202214969.doc文章的bug
 
                 while wordhandle.Selection.Find.Execute(targetText13,False, False, False, False, False, False, 0, True,"",0):
                     pass
