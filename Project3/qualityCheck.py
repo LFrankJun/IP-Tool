@@ -259,12 +259,12 @@ def main_qc():
     def SMS(sC, fN, zN,ff):
         sms.main_sms(sC, fN, zN,ff)
 
-    def OTHER(allS, wl, hEW):
-        other.main_other(allS, wl, hEW)
+    def OTHER(allS, wl, hEW, sNumber, sNumberList):
+        other.main_other(allS, wl, hEW, sNumber, sNumberList)
 
 
 
-    def checkQuality(wordhandle, file_path,funcNum):
+    def checkQuality(wordhandle, file_path,funcNum, serialNum):
         
         global qlyqContent
         try:
@@ -273,14 +273,20 @@ def main_qc():
             logging.info("Open Document has error: %s", e)
         else:
             headNameList = []
+            serialNumberList = []
             sections = wordhandle.ActiveDocument.Sections  # 所有页眉
             for i in range(1,len(sections) + 1):
                 name = wordhandle.ActiveDocument.Sections(i).Headers(1)
                 spName = ''.join([char for char in str(name) if u'\u4e00' <= char <= u'\u9fa5'])  # 提取页眉,有些页眉带有空格或者其他标点符号
+                spNumber = ''.join([char for char in str(name) if char.encode('UTF-8').isalnum()])  # 提取页眉中的数字或者字母
                 if spName != "":
                     headNameList.append(spName)
-            print("所有的页眉:%s",headNameList)
-
+                if spNumber != "":
+                    serialNumberList.append(spNumber)
+                
+            print("页眉中的标题:%s",headNameList)
+            print("页眉中的编号:%s",serialNumberList)
+            print("word文件名称中的编号:%s",serialNum)
 
             smszyIndex = [] 
             qlyqsIndex = []
@@ -583,7 +589,7 @@ def main_qc():
                 # 使用threading模块，threading.Thread()创建线程，其中target参数值为需要调用的方法，args参数值为要传递的参数，同样将其他多个线程放在一个列表中，遍历这个列表就能同时执行里面的函数了
                 t1 = threading.Thread(target=QLYQ,args=(qlyqContent,wordLen,formatftbj))
                 t2 = threading.Thread(target=SMS,args=(smsContent, ftNum, zhaiyaoName,formatftbj))
-                t3 = threading.Thread(target=OTHER,args=(allString, wordLenth, hasEnglishWord))
+                t3 = threading.Thread(target=OTHER,args=(allString, wordLenth, hasEnglishWord, serialNum, serialNumberList))
                 # 启动线程
                 t1.start()
                 t2.start()
@@ -1239,7 +1245,17 @@ def main_qc():
             wordReplacePath = wordPath.replace("\\","/")
             logging.info("wordReplacePath: %s", wordReplacePath)
             if wordReplacePath.endswith('.docx') or wordReplacePath.endswith('.doc'):
-                checkQuality(word, wordReplacePath,funcNum)
+                # 提取word文件名
+                serialNumber = ""
+                pathList = wordReplacePath.split('/')
+                if len(pathList) != 0:
+                    wordFileName = pathList[len(pathList) - 1]  # word文件名
+                    logging.info("wordFileName: %s", wordFileName)
+                    underlineIndex = wordFileName.find('_') 
+                    if underlineIndex != -1:
+                        serialNumber = wordFileName[:underlineIndex]
+
+                checkQuality(word, wordReplacePath,funcNum, serialNumber)
                 # tkinter.messagebox.showinfo('提示','检查完毕！！')
 
 

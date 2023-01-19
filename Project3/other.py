@@ -46,21 +46,23 @@ def writeJsonFile(mc):
 
 
 # 具体实现寻找错误
-def main_other(allString, wL, hEW):
+def main_other(allString, wL, hEW, sNumber, sNumberList):
 
     isOK1 = True   # “发明”和“实用新型”同时出现
     isOk2 = True   # 重复词语
     isOk3 = True   # 错别字修改
+    isOK4 = True   # 检查文件名和文件编号是否一致
  
 
+    # 检查“发明”和“实用新型”同时出现的错误
     inventList = [substr.start() for substr in re.finditer("发明", allString)]
     shiyong = [substr.start() for substr in re.finditer("实用新型", allString)]
 
     if len(inventList) != 0 and len(shiyong) != 0:
         isOK1 = False
 
+    # 检查重复字和错别字的错误
     jsonInfo = readJsonFile()
-
     dumWordList = []
     errorWordList = []
     if jsonInfo != "":
@@ -89,11 +91,18 @@ def main_other(allString, wL, hEW):
                     errorWordList.append(eWL)
                     logging.info("errorWordList: %s", errorWordList)
 
+    # 检查文件名和文件编号是否一致的错误
+    isOK4 = sNumberList.count(sNumberList[0]) == len(sNumberList)  # 比较列表中元素
+    for snPara in sNumberList:
+        if sNumber != snPara:
+            isOK4 = False
+    
 
     r1 = ""
     r2 = ""
     r3 = ""
     r4 = ""
+    r5 = ""
     if not isOK1:
         r1 = '“发明”和“实用新型”同时存在的错误,'
     if not isOk2:
@@ -106,9 +115,12 @@ def main_other(allString, wL, hEW):
         if hEW:
             r4 = r4 + '因含有英文字符，无法确保计数完全正确,'
 
-    result = 'Word文件中出现了' + r1 + r2 + r3 + r4+ '请做进一步检查!'
+    if not isOK4:
+        r5 = "Family NO不一致的情况,"
+
+    result = 'Word文件中出现了' + r1 + r2 + r3 + r4 + r5 + '请做进一步检查!'
     logging.info("result: %s",result)
-    if isOK1 and isOk2 and isOk3 and wL:
+    if isOK1 and isOk2 and isOk3 and wL and isOK4:
         pass
     else:
         tkinter.messagebox.showinfo('提示',result)
