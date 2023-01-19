@@ -1,9 +1,9 @@
 """
-Time:    2023/01/17
+Time:    2023/01/19
 Author:  Li YuanJun
-Version: V3.11
+Version: V3.12
 File:    main.py
-Describe: add new function
+Describe: fix bug
 """
 
 import logging

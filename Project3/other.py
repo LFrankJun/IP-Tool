@@ -92,10 +92,13 @@ def main_other(allString, wL, hEW, sNumber, sNumberList):
                     logging.info("errorWordList: %s", errorWordList)
 
     # 检查文件名和文件编号是否一致的错误
-    isOK4 = sNumberList.count(sNumberList[0]) == len(sNumberList)  # 比较列表中元素
-    for snPara in sNumberList:
-        if sNumber != snPara:
-            isOK4 = False
+    if len(sNumberList) != 0:
+        isOK4 = sNumberList.count(sNumberList[0]) == len(sNumberList)  # 比较列表中元素
+        for snPara in sNumberList:
+            if sNumber != snPara:
+                isOK4 = False
+    else:
+        isOK4 = False
     
 
     r1 = ""
@@ -104,7 +107,7 @@ def main_other(allString, wL, hEW, sNumber, sNumberList):
     r4 = ""
     r5 = ""
     if not isOK1:
-        r1 = '“发明”和“实用新型”同时存在的错误,'
+        r1 = '“发明”和“实用新型”同时存在的错误，'
     if not isOk2:
         r2 = '“重复词语”' + str(dumWordList) + ','  
     if not isOk3:
@@ -113,10 +116,10 @@ def main_other(allString, wL, hEW, sNumber, sNumberList):
     if not wL:
         r4 = '说明书摘要超过300字，'
         if hEW:
-            r4 = r4 + '因含有英文字符，无法确保计数完全正确,'
+            r4 = r4 + '因含有英文字符，无法确保计数完全正确，'
 
     if not isOK4:
-        r5 = "Family NO不一致的情况,"
+        r5 = "Family NO不一致的情况，"
 
     result = 'Word文件中出现了' + r1 + r2 + r3 + r4 + r5 + '请做进一步检查!'
     logging.info("result: %s",result)
